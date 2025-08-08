@@ -155,15 +155,20 @@ def get(task_id, url, type, video_format="bestvideo", audio_format="bestaudio"):
             'merge_output_format': 'mp4' if type.lower() == 'video' else None
         }
 
-        if tasks[task_id].get('start_time') or tasks[task_id].get('end_time'):
-            start_time = tasks[task_id].get('start_time') or '00:00:00'
-            end_time = tasks[task_id].get('end_time') or '10:00:00'
+        if tasks[task_id].get('start_time') is not None or tasks[task_id].get('end_time') is not None:
+            def get_seconds_from_time_param(time_param, default_seconds=0):
+                if time_param is None:
+                    return default_seconds
+                elif isinstance(time_param, (int, float)):
+                    return float(time_param)  # Already in seconds
+                elif isinstance(time_param, str):
+                    h, m, s = time_param.split(':')  # Parse "HH:MM:SS" format
+                    return float(h) * 3600 + float(m) * 60 + float(s)
+                else:
+                    return default_seconds
 
-            def time_to_seconds(time_str):
-                h, m, s = time_str.split(':')
-                return float(h) * 3600 + float(m) * 60 + float(s)
-            start_seconds = time_to_seconds(start_time)
-            end_seconds = time_to_seconds(end_time)
+            start_seconds = get_seconds_from_time_param(tasks[task_id].get('start_time'), 0)
+            end_seconds = get_seconds_from_time_param(tasks[task_id].get('end_time'), 600)  # 10min default
 
             ydl_opts['download_ranges'] = download_range_func(None, [(start_seconds, end_seconds)])
             ydl_opts['force_keyframes_at_cuts'] = tasks[task_id].get('force_keyframes', False)

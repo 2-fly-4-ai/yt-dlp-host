@@ -1,0 +1,22 @@
+{
+  "name": "yt-dlp-containers",
+  "version": "1.0.0",
+  "description": "YouTube downloader service using Cloudflare Containers",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:containers": "wrangler containers deploy"
+  },
+  "dependencies": {
+    "@cloudflare/containers": "^1.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240512.0",
+    "typescript": "^5.0.0",
+    "wrangler": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

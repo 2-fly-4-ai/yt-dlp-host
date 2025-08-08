@@ -1,0 +1,63 @@
+# Git
+.git
+.gitignore
+
+# Node modules and npm
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Documentation
+README.md
+*.md
+*.mdx
+
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.coverage
+.pytest_cache
+
+# Virtual environments
+venv
+env
+.env
+
+# Docker
+Dockerfile.old
+docker-compose.yml
+
+# Downloads (if large)
+downloads/*
+!downloads/.gitkeep
+
+# Logs
+*.log
+logs
+
+# Temporary files
+*.tmp
+*.temp
+
+# Wrangler
+.wrangler
+wrangler.toml.bak
+
+# TypeScript build
+dist
+build
