@@ -2,14 +2,9 @@ import { Container } from "@cloudflare/containers";
 
 export class MyContainer extends Container {
   defaultPort = 8080;
-  sleepAfter = "10000s";
-  timeout = "10000s";
-  envVars = {
-    FLASK_APP: "src/server.py",
-    FLASK_RUN_HOST: "0.0.0.0",
-    FLASK_RUN_PORT: "8080",
-    FLASK_ENV: "production",
-  };
+  sleepAfter = "3000s";
+  timeout = "3000s";
+  manualStart = true;
 
   override onStart() {
     console.log("YT-DLP Container successfully started");
@@ -64,6 +59,7 @@ export class MyContainer extends Container {
 
 export interface Env {
   MY_CONTAINER: DurableObjectNamespace;
+  R2_BUCKET: R2Bucket;
 }
 
 function getRandom(
@@ -85,12 +81,34 @@ export default {
       if (pathname.startsWith("/container")) {
         const id = env.MY_CONTAINER.idFromName(pathname);
         const container = env.MY_CONTAINER.get(id);
+        
+        await container.start({
+          envVars: {
+            FLASK_APP: "src/server.py",
+            FLASK_RUN_HOST: "0.0.0.0",
+            FLASK_RUN_PORT: "8080",
+            FLASK_ENV: "production",
+            USE_WORKER_R2_BINDING: "true",
+          },
+        });
+        
         return await container.fetch(request);
       }
 
       // Load balance across multiple containers
       if (pathname.startsWith("/lb")) {
         const container = getRandom(env.MY_CONTAINER, 3);
+        
+        await container.start({
+          envVars: {
+            FLASK_APP: "src/server.py",
+            FLASK_RUN_HOST: "0.0.0.0",
+            FLASK_RUN_PORT: "8080",
+            FLASK_ENV: "production",
+            USE_WORKER_R2_BINDING: "true",
+          },
+        });
+        
         return await container.fetch(request);
       }
 
@@ -104,14 +122,71 @@ export default {
         pathname.startsWith("/get_key") ||
         pathname.startsWith("/check_permissions")
       ) {
-        const id = env.MY_CONTAINER.idFromName("yt-dlp-main");
+        const id = env.MY_CONTAINER.idFromName("yt-dlp-main-v2");
         const container = env.MY_CONTAINER.get(id);
+        
+        await container.start({
+          envVars: {
+            FLASK_APP: "src/server.py",
+            FLASK_RUN_HOST: "0.0.0.0",
+            FLASK_RUN_PORT: "8080",
+            FLASK_ENV: "production",
+            USE_WORKER_R2_BINDING: "true",
+          },
+        });
+        
         return await container.fetch(request);
       }
 
       // Health check endpoint
       if (pathname === "/health") {
         return new Response("OK", { status: 200 });
+      }
+
+      // Debug endpoint to check R2 binding
+      if (pathname === "/debug-secrets") {
+        return new Response(JSON.stringify({
+          r2_bucket_available: !!env.R2_BUCKET,
+        }), {
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+
+      // R2 upload proxy endpoint for containers
+      if (pathname.startsWith("/r2-upload/")) {
+        if (request.method !== "PUT") {
+          return new Response("Method not allowed", { status: 405 });
+        }
+        
+        const key = pathname.slice("/r2-upload/".length);
+        if (!key) {
+          return new Response("Missing key", { status: 400 });
+        }
+
+        try {
+          const body = await request.arrayBuffer();
+          await env.R2_BUCKET.put(key, body, {
+            httpMetadata: {
+              contentType: request.headers.get("Content-Type") || "application/octet-stream"
+            }
+          });
+          
+          const publicUrl = `https://5839829ae31cfcc592f0f99a0de95da3.r2.cloudflarestorage.com/yt-dlp-container/${key}`;
+          return new Response(JSON.stringify({ 
+            success: true, 
+            url: publicUrl 
+          }), {
+            headers: { "Content-Type": "application/json" }
+          });
+        } catch (error) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: `R2 upload failed: ${error}`
+          }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" }
+          });
+        }
       }
 
       return new Response("Not Found", { status: 404 });

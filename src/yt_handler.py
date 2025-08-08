@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from config import DOWNLOAD_DIR, TASK_CLEANUP_TIME, MAX_WORKERS
 from src.json_utils import load_tasks, save_tasks, load_keys
 from src.auth import check_memory_limit
+from src.r2_storage import upload_file_to_r2, cleanup_local_file
 import yt_dlp, os, threading, json, time, shutil
 from yt_dlp.utils import download_range_func
 
@@ -109,10 +110,20 @@ def get_info(task_id, url):
             with open(info_file, 'w') as f:
                 json.dump(info, f)
 
+            upload_result = upload_file_to_r2(info_file, task_id, 'info.json')
+            
             tasks = load_tasks()
-            tasks[task_id].update(status='completed')
             tasks[task_id]['completed_time'] = datetime.now().isoformat()
-            tasks[task_id]['file'] = f'/files/{task_id}/info.json'
+            
+            if upload_result['success']:
+                cleanup_local_file(info_file)
+                tasks[task_id]['status'] = 'completed'
+                tasks[task_id]['file'] = upload_result['url']
+            else:
+                tasks[task_id]['status'] = 'completed'
+                tasks[task_id]['file'] = f'/files/{task_id}/info.json'
+                tasks[task_id]['r2_error'] = upload_result['error']
+            
             save_tasks(tasks)
         except Exception as e:
             handle_task_error(task_id, e)
@@ -176,10 +187,28 @@ def get(task_id, url, type, video_format="bestvideo", audio_format="bestaudio"):
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
+            
+            downloaded_files = os.listdir(download_path)
+            if not downloaded_files:
+                raise Exception("No files were downloaded")
+            
+            downloaded_file = downloaded_files[0]
+            local_file_path = os.path.join(download_path, downloaded_file)
+            
+            upload_result = upload_file_to_r2(local_file_path, task_id, downloaded_file)
+            
             tasks = load_tasks()
-            tasks[task_id].update(status='completed')
             tasks[task_id]['completed_time'] = datetime.now().isoformat()
-            tasks[task_id]['file'] = f'/files/{task_id}/' + os.listdir(download_path)[0]
+            
+            if upload_result['success']:
+                cleanup_local_file(local_file_path)
+                tasks[task_id]['status'] = 'completed'
+                tasks[task_id]['file'] = upload_result['url']
+            else:
+                tasks[task_id]['status'] = 'completed'
+                tasks[task_id]['file'] = f'/files/{task_id}/' + downloaded_file
+                tasks[task_id]['r2_error'] = upload_result['error']
+            
             save_tasks(tasks)
         except Exception as e:
             handle_task_error(task_id, e)
@@ -217,10 +246,28 @@ def get_live(task_id, url, type, start, duration, video_format="bestvideo", audi
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
+            
+            downloaded_files = os.listdir(download_path)
+            if not downloaded_files:
+                raise Exception("No files were downloaded")
+            
+            downloaded_file = downloaded_files[0]
+            local_file_path = os.path.join(download_path, downloaded_file)
+            
+            upload_result = upload_file_to_r2(local_file_path, task_id, downloaded_file)
+            
             tasks = load_tasks()
-            tasks[task_id].update(status='completed')
             tasks[task_id]['completed_time'] = datetime.now().isoformat()
-            tasks[task_id]['file'] = f'/files/{task_id}/' + os.listdir(download_path)[0]
+            
+            if upload_result['success']:
+                cleanup_local_file(local_file_path)
+                tasks[task_id]['status'] = 'completed'
+                tasks[task_id]['file'] = upload_result['url']
+            else:
+                tasks[task_id]['status'] = 'completed'
+                tasks[task_id]['file'] = f'/files/{task_id}/' + downloaded_file
+                tasks[task_id]['r2_error'] = upload_result['error']
+            
             save_tasks(tasks)
         except Exception as e:
             handle_task_error(task_id, e)

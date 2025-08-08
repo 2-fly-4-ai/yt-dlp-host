@@ -7,6 +7,12 @@
   "observability": {
     "enabled": true
   },
+  "r2_buckets": [
+    {
+      "binding": "R2_BUCKET", 
+      "bucket_name": "yt-dlp-container"
+    }
+  ],
   "containers": [
     {
       "class_name": "MyContainer",

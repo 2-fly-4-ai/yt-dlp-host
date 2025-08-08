@@ -15,3 +15,8 @@ DEFAULT_MEMORY_QUOTA_RATE = 10  # minutes to rate limit
 # Memory control
 SIZE_ESTIMATION_BUFFER = 1.10
 AVAILABLE_MEMORY = 20 * 1024 * 1024 * 1024  # 20GB
+
+# R2 Storage
+R2_ENDPOINT_URL = 'https://5839829ae31cfcc592f0f99a0de95da3.r2.cloudflarestorage.com'
+R2_BUCKET_NAME = 'yt-dlp-container'
+R2_PUBLIC_URL_BASE = 'https://5839829ae31cfcc592f0f99a0de95da3.r2.cloudflarestorage.com/yt-dlp-container'
